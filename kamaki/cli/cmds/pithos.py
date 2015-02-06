@@ -1186,6 +1186,56 @@ class file_cat(_PithosContainer):
 
 
 @command(file_cmds)
+class file_edit(_PithosContainer):
+    """Edit remote file with your text editor"""
+
+    arguments = dict(
+        editor=ValueArgument('Specify what text editor to use. If no editor is'
+                             ' specified, the one from the config file will be'
+                             ' used. If no editor is set in the config file, '
+                             ' we will try to use the $EDITOR env var.',
+                             '--editor')
+    )
+
+    @errors.Generic.all
+    @errors.Pithos.connection
+    @errors.Pithos.object_path
+    def _run(self):
+
+        try:
+            lfile = open("/tmp/kamaki_tmp_file", "w")
+            self.client.download_object(self.path, lfile)
+            lfile.close()
+        except:
+            pass
+        import subprocess
+
+        if not self['editor']:
+            if not self.config.get('global', 'editor'):
+                import os
+                try:
+                    editor = os.environ["EDITOR"]
+                except KeyError:
+                    raiseCLIError("No editor found", details=[
+                        "No editor specified, please use the --editor option, "
+                        "set the EDITOR environment variable or set the "
+                        "`editor` config option in .kamakirc."])
+            else:
+                editor = self.config.get('global', 'editor')
+        else:
+            editor = self['editor']
+
+        subprocess.call([editor, "/tmp/kamaki_tmp_file"])
+        lfile = open("/tmp/kamaki_tmp_file", "r")
+        self.client.upload_object(self.path, lfile)
+        lfile.close()
+
+    def main(self, path_or_url):
+        super(self.__class__, self)._run(path_or_url)
+        self._run()
+
+
+@command(file_cmds)
 class file_download(_PithosContainer):
     """Download a remove file or directory object to local file system"""
 
