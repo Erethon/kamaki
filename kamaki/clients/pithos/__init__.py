@@ -754,7 +754,9 @@ class PithosClient(PithosRestClient):
             if_match=None,
             if_none_match=None,
             if_modified_since=None,
-            if_unmodified_since=None):
+            if_unmodified_since=None,
+            decrypt=False,
+            password=None):
         """Download an object (multiple connections, random blocks)
 
         :param obj: (str) remote object path
@@ -796,28 +798,50 @@ class PithosClient(PithosRestClient):
             self.progress_bar_gen = download_cb(len(hash_list))
             self._cb_next()
 
-        if dst.isatty():
-            self._dump_blocks_sync(
-                obj,
-                hash_list,
-                blocksize,
-                total_size,
-                dst,
-                range_str,
-                **restargs)
-        else:
+        if decrypt:
+            import tempfile
+            import simplecrypt
+            tmp_dst = tempfile.TemporaryFile()
             self._dump_blocks_async(
                 obj,
                 remote_hashes,
                 blocksize,
                 total_size,
-                dst,
+                tmp_dst,
                 blockhash,
                 resume,
                 range_str,
                 **restargs)
-            if not range_str:
-                dst.truncate(total_size)
+
+            tmp_dst.seek(0)
+            hacked = tmp_dst.read()
+            plain = simplecrypt.decrypt(password, hacked)
+            dst.write(plain)
+            dst.flush()
+
+        else:
+            if dst.isatty():
+                self._dump_blocks_sync(
+                    obj,
+                    hash_list,
+                    blocksize,
+                    total_size,
+                    dst,
+                    range_str,
+                    **restargs)
+            else:
+                self._dump_blocks_async(
+                    obj,
+                    remote_hashes,
+                    blocksize,
+                    total_size,
+                    dst,
+                    blockhash,
+                    resume,
+                    range_str,
+                    **restargs)
+                if not range_str:
+                    dst.truncate(total_size)
 
         self._complete_cb()
 

@@ -933,6 +933,7 @@ class file_upload(_PithosContainer):
             'Use * for all users',
             '--write-permission'),
         public=FlagArgument('make object publicly accessible', '--public'),
+        encrypt=FlagArgument('encrypt file before uploading', '--encrypt'),
         progress_bar=ProgressBarArgument(
             'do not show progress bar',
             ('-N', '--no-progress-bar'),
@@ -1231,6 +1232,8 @@ class file_download(_PithosContainer):
         object_version=ValueArgument(
             'download a file of a specific version', '--object-version'),
         max_threads=IntArgument('default: 5', '--threads'),
+        decrypt=FlagArgument('Decrypt file after download', '--decrypt'),
+        password=ValueArgument('Password to decrypt file', '--password'),
         progress_bar=ProgressBarArgument(
             'do not show progress bar', ('-N', '--no-progress-bar'),
             default=False),
@@ -1409,7 +1412,9 @@ class file_download(_PithosContainer):
                     resume=self['resume'],
                     if_none_match=self['non_matching_etag'],
                     if_modified_since=self['modified_since_date'],
-                    if_unmodified_since=self['unmodified_since_date'])
+                    if_unmodified_since=self['unmodified_since_date'],
+                    decrypt=self['decrypt'],
+                    password=self['password'])
         except KeyboardInterrupt:
             timeout = 0.5
             msg = '\n'
